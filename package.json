@@ -1,0 +1,23 @@
+{
+  "name": "batch-image-analyzer",
+  "version": "1.0.0",
+  "description": "Batch image analysis using OpenAI Vision API",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node index.js --test"
+  },
+  "keywords": [
+    "openai",
+    "vision",
+    "batch",
+    "image-processing"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "openai": "^4.73.0",
+    "dotenv": "^16.4.5"
+  }
+}
