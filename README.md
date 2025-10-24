@@ -95,15 +95,21 @@ Total images: 250
 
 ## Output Format
 
-Results are saved to `results.json` (configurable):
+The script now saves results in batches to reduce memory usage. Instead of a single large file, you'll get:
+
+- **Batch files**: `results0-5.json`, `results5-10.json`, etc. (one file per batch)
+- **Summary file**: `results-summary.json` (overall statistics)
+
+Each batch file contains:
 
 ```json
 {
   "metadata": {
+    "batchRange": "0-5",
     "processedAt": "2025-01-15T10:30:00.000Z",
-    "totalImages": 250,
-    "successfulCount": 248,
-    "errorCount": 2,
+    "totalImages": 5,
+    "successfulCount": 5,
+    "errorCount": 0,
     "model": "gpt-4o",
     "prompt": "Describe this image in detail..."
   },
@@ -122,17 +128,50 @@ Results are saved to `results.json` (configurable):
       "timestamp": "2025-01-15T10:30:15.000Z"
     }
   ],
-  "errors": [
-    {
-      "image": "corrupted.jpg",
-      "path": "./images/corrupted.jpg",
-      "success": false,
-      "error": "Invalid image format",
-      "timestamp": "2025-01-15T10:31:00.000Z"
-    }
-  ]
+  "errors": []
 }
 ```
+
+## Viewing Results with the Web Viewer
+
+A beautiful web interface is included for viewing your results!
+
+### Quick Start
+
+1. **Start the web server**:
+```bash
+npm run viewer
+```
+Or directly:
+```bash
+node server.js
+```
+
+2. **Open your browser** to `http://localhost:3000`
+
+3. **Load your results**:
+   - Click "Select JSON Files"
+   - Select all your batch files (e.g., `results0-5.json`, `results5-10.json`, etc.)
+   - You can select multiple files at once (Ctrl/Cmd + Click)
+
+### Features
+
+- **Beautiful Gallery View**: See all images with their AI-generated descriptions
+- **Batch Support**: Load multiple batch files at once
+- **Statistics Dashboard**: View total images processed, success/error counts
+- **Error Visualization**: Failed images are highlighted with error details
+- **Responsive Design**: Works on desktop and mobile devices
+- **No Backend Required**: All processing happens in the browser
+
+### Alternative: Using Python HTTP Server
+
+If you prefer not to use Node.js for the server:
+
+```bash
+python3 -m http.server 3000
+```
+
+Then open `http://localhost:3000/viewer.html` in your browser.
 
 ## Configuration Options
 
@@ -202,8 +241,9 @@ PROMPT=Extract the following from this receipt: merchant name, date, total amoun
 - Verify images have supported extensions
 
 **Out of memory errors**
-- Process images in smaller batches
-- Reduce `CONCURRENCY` value
+- The script now writes batch files automatically to minimize memory usage
+- Each batch is saved to disk immediately (e.g., `results0-5.json`, `results5-10.json`)
+- If issues persist, reduce `CONCURRENCY` value
 
 ## Cost Estimation
 

@@ -47,10 +47,11 @@ class ImageBatchProcessor {
   constructor(config) {
     this.config = config;
     this.openai = new OpenAI({ apiKey: config.apiKey });
-    this.results = [];
-    this.errors = [];
     this.processedCount = 0;
     this.totalCount = 0;
+    this.successCount = 0;
+    this.errorCount = 0;
+    this.totalTokens = 0;
   }
 
   /**
@@ -166,16 +167,53 @@ class ImageBatchProcessor {
       console.log(`[${this.processedCount}/${this.totalCount}] (${percentage}%) Processed: ${path.basename(imagePath)}`);
 
       if (result.success) {
-        this.results.push(result);
+        this.successCount++;
+        this.totalTokens += (result.usage?.total_tokens || 0);
       } else {
-        this.errors.push(result);
+        this.errorCount++;
         console.error(`   ❌ Error: ${result.error}`);
       }
 
       return result;
     });
 
-    await Promise.all(promises);
+    return await Promise.all(promises);
+  }
+
+  /**
+   * Save batch results to a separate JSON file
+   */
+  async saveBatchResults(batchResults, startIndex, endIndex) {
+    const results = batchResults.filter(r => r.success);
+    const errors = batchResults.filter(r => !r.success);
+
+    const output = {
+      metadata: {
+        batchRange: `${startIndex}-${endIndex}`,
+        processedAt: new Date().toISOString(),
+        totalImages: batchResults.length,
+        successfulCount: results.length,
+        errorCount: errors.length,
+        model: this.config.model,
+        prompt: this.config.prompt
+      },
+      results: results,
+      errors: errors
+    };
+
+    const outputDir = path.dirname(this.config.outputFile);
+    const outputExt = path.extname(this.config.outputFile);
+    const outputBase = path.basename(this.config.outputFile, outputExt);
+    const batchFileName = `${outputBase}${startIndex}-${endIndex}${outputExt}`;
+    const batchFilePath = path.join(outputDir, batchFileName);
+
+    await fs.writeFile(
+      batchFilePath,
+      JSON.stringify(output, null, 2),
+      'utf8'
+    );
+
+    console.log(`   💾 Batch saved to: ${batchFileName}`);
   }
 
   /**
@@ -207,7 +245,11 @@ class ImageBatchProcessor {
     // Process in batches
     for (let i = 0; i < imageFiles.length; i += this.config.concurrency) {
       const batch = imageFiles.slice(i, i + this.config.concurrency);
-      await this.processBatch(batch);
+      const batchResults = await this.processBatch(batch);
+
+      // Save batch results to disk immediately to reduce memory usage
+      const endIndex = Math.min(i + this.config.concurrency, imageFiles.length);
+      await this.saveBatchResults(batchResults, i, endIndex);
 
       // Delay between batches (except for the last batch)
       if (i + this.config.concurrency < imageFiles.length) {
@@ -215,37 +257,41 @@ class ImageBatchProcessor {
       }
     }
 
-    // Save results
-    await this.saveResults();
+    // Save summary
+    await this.saveSummary();
 
     // Print summary
     this.printSummary();
   }
 
   /**
-   * Save results to JSON file
+   * Save summary to JSON file
    */
-  async saveResults() {
-    const output = {
-      metadata: {
-        processedAt: new Date().toISOString(),
-        totalImages: this.totalCount,
-        successfulCount: this.results.length,
-        errorCount: this.errors.length,
-        model: this.config.model,
-        prompt: this.config.prompt
-      },
-      results: this.results,
-      errors: this.errors
+  async saveSummary() {
+    const summary = {
+      processedAt: new Date().toISOString(),
+      totalImages: this.totalCount,
+      successfulCount: this.successCount,
+      errorCount: this.errorCount,
+      totalTokensUsed: this.totalTokens,
+      model: this.config.model,
+      prompt: this.config.prompt,
+      concurrency: this.config.concurrency
     };
 
+    const outputDir = path.dirname(this.config.outputFile);
+    const outputExt = path.extname(this.config.outputFile);
+    const outputBase = path.basename(this.config.outputFile, outputExt);
+    const summaryFileName = `${outputBase}-summary${outputExt}`;
+    const summaryFilePath = path.join(outputDir, summaryFileName);
+
     await fs.writeFile(
-      this.config.outputFile,
-      JSON.stringify(output, null, 2),
+      summaryFilePath,
+      JSON.stringify(summary, null, 2),
       'utf8'
     );
 
-    console.log(`\n💾 Results saved to: ${this.config.outputFile}`);
+    console.log(`\n💾 Summary saved to: ${summaryFileName}`);
   }
 
   /**
@@ -256,12 +302,11 @@ class ImageBatchProcessor {
     console.log('📊 PROCESSING SUMMARY');
     console.log('='.repeat(50));
     console.log(`Total images: ${this.totalCount}`);
-    console.log(`✅ Successful: ${this.results.length}`);
-    console.log(`❌ Failed: ${this.errors.length}`);
+    console.log(`✅ Successful: ${this.successCount}`);
+    console.log(`❌ Failed: ${this.errorCount}`);
 
-    if (this.results.length > 0) {
-      const totalTokens = this.results.reduce((sum, r) => sum + (r.usage?.total_tokens || 0), 0);
-      console.log(`🎯 Total tokens used: ${totalTokens.toLocaleString()}`);
+    if (this.successCount > 0) {
+      console.log(`🎯 Total tokens used: ${this.totalTokens.toLocaleString()}`);
     }
 
     console.log('='.repeat(50) + '\n');

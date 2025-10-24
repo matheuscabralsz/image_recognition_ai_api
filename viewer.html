@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Recognition Results Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #jsonFiles {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .stat-number {
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+
+        .image-container {
+            width: 100%;
+            height: 300px;
+            overflow: hidden;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .image-info {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-name {
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .image-description {
+            color: #666;
+            line-height: 1.6;
+            flex: 1;
+        }
+
+        .image-description p {
+            margin: 0.5em 0;
+        }
+
+        .image-description p:first-child {
+            margin-top: 0;
+        }
+
+        .image-description p:last-child {
+            margin-bottom: 0;
+        }
+
+        .image-description ol,
+        .image-description ul {
+            margin: 0.75em 0;
+            padding-left: 1.5em;
+        }
+
+        .image-description li {
+            margin: 0.4em 0;
+        }
+
+        .image-description strong {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .image-description em {
+            font-style: italic;
+        }
+
+        .image-meta {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em;
+            color: #999;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #ff4757;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .empty-state h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            .gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image Recognition Results Viewer</h1>
+            <p>Upload your JSON batch files to view image analysis results</p>
+
+            <div class="controls">
+                <div class="file-input-wrapper">
+                    <input type="file" id="jsonFiles" accept=".json" multiple>
+                    <label for="jsonFiles" class="file-input-label">
+                        Select JSON Files
+                    </label>
+                </div>
+            </div>
+
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalImages">0</span> Images
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="totalFiles">0</span> Files Loaded
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="successCount">0</span> Successful
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="errorCount">0</span> Errors
+                </div>
+            </div>
+        </header>
+
+        <div id="content">
+            <div class="empty-state">
+                <h2>No Files Loaded</h2>
+                <p>Click "Select JSON Files" above to load your batch result files.<br>
+                   You can select multiple files at once (Ctrl/Cmd + Click).<br><br>
+                   The JSON files should be named like: <code>results0-5.json</code>, <code>results5-10.json</code>, etc.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            results: [],
+            errors: []
+        };
+
+        document.getElementById('jsonFiles').addEventListener('change', handleFileSelect);
+
+        async function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+
+            if (files.length === 0) return;
+
+            document.getElementById('content').innerHTML = '<div class="loading">Loading files...</div>';
+
+            state.results = [];
+            state.errors = [];
+
+            for (const file of files) {
+                try {
+                    const content = await readFileContent(file);
+                    const data = JSON.parse(content);
+
+                    if (data.results && Array.isArray(data.results)) {
+                        state.results.push(...data.results);
+                    }
+
+                    if (data.errors && Array.isArray(data.errors)) {
+                        state.errors.push(...data.errors);
+                    }
+                } catch (error) {
+                    console.error(`Error reading file ${file.name}:`, error);
+                }
+            }
+
+            updateStats(files.length);
+            renderGallery();
+        }
+
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function updateStats(fileCount) {
+            document.getElementById('stats').style.display = 'flex';
+            document.getElementById('totalImages').textContent = state.results.length + state.errors.length;
+            document.getElementById('totalFiles').textContent = fileCount;
+            document.getElementById('successCount').textContent = state.results.length;
+            document.getElementById('errorCount').textContent = state.errors.length;
+        }
+
+        function renderGallery() {
+            const content = document.getElementById('content');
+
+            if (state.results.length === 0 && state.errors.length === 0) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No Results Found</h2>
+                        <p>The selected files don't contain any image results.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const galleryHTML = `
+                <div class="gallery">
+                    ${state.results.map(result => createImageCard(result)).join('')}
+                    ${state.errors.map(error => createErrorCard(error)).join('')}
+                </div>
+            `;
+
+            content.innerHTML = galleryHTML;
+        }
+
+        function markdownToHtml(text) {
+            if (!text) return '';
+
+            // Escape HTML to prevent XSS
+            text = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            // Convert markdown to HTML
+            // Bold text: **text** or __text__
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+            // Italic text: *text* or _text_
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+
+            // Line breaks: \n to <br>
+            text = text.replace(/\\n/g, '\n');
+
+            // Split into lines for processing lists
+            const lines = text.split('\n');
+            let inList = false;
+            let inOrderedList = false;
+            let html = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+
+                // Numbered lists: 1. item
+                if (/^\d+\.\s/.test(line)) {
+                    if (!inOrderedList) {
+                        if (inList) html.push('</ul>');
+                        html.push('<ol>');
+                        inOrderedList = true;
+                        inList = false;
+                    }
+                    line = '<li>' + line.replace(/^\d+\.\s/, '') + '</li>';
+                }
+                // Bullet lists: - item or * item
+                else if (/^[-*]\s/.test(line)) {
+                    if (!inList) {
+                        if (inOrderedList) html.push('</ol>');
+                        html.push('<ul>');
+                        inList = true;
+                        inOrderedList = false;
+                    }
+                    line = '<li>' + line.replace(/^[-*]\s/, '') + '</li>';
+                }
+                // Regular text
+                else {
+                    if (inList) {
+                        html.push('</ul>');
+                        inList = false;
+                    }
+                    if (inOrderedList) {
+                        html.push('</ol>');
+                        inOrderedList = false;
+                    }
+                    if (line) {
+                        line = '<p>' + line + '</p>';
+                    } else {
+                        line = '';
+                    }
+                }
+
+                html.push(line);
+            }
+
+            // Close any open lists
+            if (inList) html.push('</ul>');
+            if (inOrderedList) html.push('</ol>');
+
+            return html.join('\n');
+        }
+
+        function createImageCard(result) {
+            // Extract the relative path from the full path
+            // Handles both "./images/file.jpg" and absolute paths
+            let imagePath = result.path || '';
+
+            // If path contains 'images/', extract from there
+            if (imagePath.includes('images/')) {
+                imagePath = imagePath.substring(imagePath.indexOf('images/'));
+            } else {
+                // Fallback: construct path from image filename
+                imagePath = `images/${result.image}`;
+            }
+
+            // URL encode the path to handle special characters and spaces
+            // Split by '/' to preserve directory structure, encode each part
+            const pathParts = imagePath.split('/');
+            const encodedPath = pathParts.map(part => encodeURIComponent(part)).join('/');
+
+            const tokens = result.usage ? result.usage.total_tokens : 'N/A';
+            const timestamp = new Date(result.timestamp).toLocaleString();
+
+            // Convert markdown description to HTML
+            const descriptionHtml = markdownToHtml(result.description || 'No description available');
+
+            return `
+                <div class="image-card">
+                    <div class="image-container">
+                        <img src="${encodedPath}" alt="${result.image}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22><text x=%2250%%22 y=%2250%%22 font-size=%2220%22 text-anchor=%22middle%22 dy=%22.3em%22>Image not found</text></svg>'">
+                    </div>
+                    <div class="image-info">
+                        <div class="image-name">${result.image}</div>
+                        <div class="image-description">${descriptionHtml}</div>
+                        <div class="image-meta">
+                            <span>Tokens: ${tokens}</span>
+                            <span>${timestamp}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createErrorCard(error) {
+            const timestamp = new Date(error.timestamp).toLocaleString();
+
+            return `
+                <div class="image-card" style="border: 2px solid #ff4757;">
+                    <div class="image-container" style="background: #ffebee;">
+                        <div style="color: #ff4757; font-size: 48px;">⚠️</div>
+                    </div>
+                    <div class="image-info">
+                        <div class="image-name" style="color: #ff4757;">${error.image}</div>
+                        <div class="image-description">
+                            <strong>Error:</strong> ${error.error || 'Unknown error'}
+                        </div>
+                        <div class="image-meta">
+                            <span style="color: #ff4757;">Failed</span>
+                            <span>${timestamp}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
