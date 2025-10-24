@@ -5,7 +5,12 @@
 node_modules/
 
 # Results
-results.json
+results/*.json
+!results/.gitkeep
+
+# Extracts
+extracts/*.json
+!extracts/.gitkeep
 
 # Images (keep directory structure but not actual images)
 images/*.jpg

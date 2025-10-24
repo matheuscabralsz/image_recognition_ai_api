@@ -95,10 +95,10 @@ Total images: 250
 
 ## Output Format
 
-The script now saves results in batches to reduce memory usage. Instead of a single large file, you'll get:
+The script now saves results in batches to reduce memory usage. All files are saved in the `./results/` directory. Instead of a single large file, you'll get:
 
-- **Batch files**: `results0-5.json`, `results5-10.json`, etc. (one file per batch)
-- **Summary file**: `results-summary.json` (overall statistics)
+- **Batch files**: `results/results0-5.json`, `results/results5-10.json`, etc. (one file per batch)
+- **Summary file**: `results/results-summary.json` (overall statistics)
 
 Each batch file contains:
 
@@ -173,6 +173,56 @@ python3 -m http.server 3000
 
 Then open `http://localhost:3000/viewer.html` in your browser.
 
+## Extracting Descriptions
+
+Once you've processed your images, you can extract all descriptions into a clean JSON file:
+
+```bash
+npm run extract
+```
+
+This will:
+- Read all batch result files from `./results/`
+- Extract all successful descriptions
+- Generate two output files in `./extracts/`:
+  - `descriptions.json` - Simple array of description strings
+  - `descriptions-detailed.json` - Descriptions with metadata (image name, timestamp, tokens)
+
+### Output Format
+
+**Simple format** (`descriptions.json`):
+```json
+{
+  "metadata": {
+    "extractedAt": "2025-10-24T10:30:00.000Z",
+    "totalFiles": 197,
+    "totalImages": 985,
+    "successfulDescriptions": 982,
+    "failedImages": 3
+  },
+  "descriptions": [
+    "Based on the image...",
+    "The image shows...",
+    "This screenshot displays..."
+  ]
+}
+```
+
+**Detailed format** (`descriptions-detailed.json`):
+```json
+{
+  "metadata": { ... },
+  "descriptions": [
+    {
+      "image": "photo001.png",
+      "description": "Based on the image...",
+      "timestamp": "2025-10-24T10:15:00.000Z",
+      "tokens": 1402
+    }
+  ]
+}
+```
+
 ## Configuration Options
 
 | Variable | Default | Description |
@@ -180,7 +230,7 @@ Then open `http://localhost:3000/viewer.html` in your browser.
 | `OPENAI_API_KEY` | *required* | Your OpenAI API key |
 | `MODEL` | `gpt-4o` | Vision model to use |
 | `IMAGES_DIR` | `./images` | Directory containing images |
-| `OUTPUT_FILE` | `./results.json` | Output file path |
+| `OUTPUT_FILE` | `./results/results.json` | Output file path |
 | `PROMPT` | Describe this image... | Custom prompt for analysis |
 | `MAX_TOKENS` | `500` | Maximum response tokens |
 | `CONCURRENCY` | `5` | Concurrent requests |

@@ -21,7 +21,7 @@ const CONFIG = {
   imagesDir: process.env.IMAGES_DIR || './images',
 
   // Output file for results
-  outputFile: process.env.OUTPUT_FILE || './results.json',
+  outputFile: process.env.OUTPUT_FILE || './results/results.json',
 
   // Prompt to send with each image
   prompt: process.env.PROMPT || 'Describe this image in detail, including any text, objects, people, and activities visible.',
